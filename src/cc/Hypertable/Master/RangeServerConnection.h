@@ -74,6 +74,8 @@ namespace Hypertable {
     InetAddr local_addr() const { return m_local_addr; }
     InetAddr public_addr() const { return m_public_addr; }
 
+    const std::string to_str();
+
     virtual const String name() { return "RangeServerConnection"; }
     virtual void display(std::ostream &os);
 
