@@ -94,13 +94,6 @@ void OperationRegisterServer::execute() {
 
   }
   else {
-    if (!m_context->rsc_manager->find_server_by_hostname(m_params.system_stats().net_info.host_name, m_rsc))
-      m_context->rsc_manager->find_server_by_public_addr(m_public_addr, m_rsc);
-    if (m_rsc)
-      m_location = m_rsc->location();
-  }
-
-  if (m_location.empty()) {
     uint64_t id = m_context->master_file->next_server_id();
     if (m_context->location_hash.empty())
       m_location = format("rs%llu", (Llu)id);
@@ -119,10 +112,10 @@ void OperationRegisterServer::execute() {
     m_context->hyperspace->close(handle);
   }
 
-  if (m_rsc)
-    HT_ASSERT(!m_rsc->connected());
-  else
+  if (!m_rsc)
     m_rsc = make_shared<RangeServerConnection>(m_location, m_params.system_stats().net_info.host_name, m_public_addr);
+  else
+    m_context->rsc_manager->disconnect_server(m_rsc);
 
   if (!m_rsc->get_hyperspace_handle(&handle, &hyperspace_callback)) {
     String fname = m_context->toplevel_dir + "/servers/" + m_location;
