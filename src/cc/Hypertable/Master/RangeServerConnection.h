@@ -76,8 +76,8 @@ namespace Hypertable {
 
     const std::string to_str();
 
-    virtual const String name() { return "RangeServerConnection"; }
-    virtual void display(std::ostream &os);
+    const String name() override { return "RangeServerConnection"; }
+    void display(std::ostream &os) override;
 
     /** Decodes serialized RangeServerConnection object.
      * @param bufp Address of source buffer pointer (advanced by call)
