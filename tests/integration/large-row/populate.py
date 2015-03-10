@@ -85,19 +85,19 @@ have dared to recall them.
 
 M. Myriel had arrived at D---- accompanied by an elderly spinster,
 Mademoiselle Baptistine, who was his sister, and ten years his junior.
-""";
+"""
 
 if (len(sys.argv) < 2):
-  print sys.argv[0], "<amount-to-write>"
+  print(sys.argv[0], "<amount-to-write>")
   sys.exit(1)
 
 try:
   random.seed(1);
 
   story = story.replace("\n", " ");
-  
+
   client = ThriftClient("localhost", 15867)
-  
+
   namespace = client.namespace_open("/")
 
   mutator = client.mutator_open(namespace, "LargeRowTest", 0, 0)
@@ -113,9 +113,8 @@ try:
 
   client.close_namespace(namespace)
 
-except ClientException, e:
-  print '%s' % (e.message)
+except ClientException as e:
+  print('%s' % (e.message))
   sys.exit(1)
 
 sys.exit(0)
-

@@ -7,8 +7,8 @@ from hypertable.thriftclient import *
 from hyperthrift.gen.ttypes import *
 
 if (len(sys.argv) < 2):
-  print sys.argv[0], "<source-location>"
-  sys.exit(1);
+  print(sys.argv[0], "<source-location>")
+  sys.exit(1)
 
 source=sys.argv[1]
 
@@ -18,7 +18,7 @@ try:
   namespace = client.open_namespace("/sys")
 
   scanner = client.open_scanner(namespace, "METADATA",
-                                ScanSpec(None, None, None, 1, 0, None, None, ["StartRow","Location"]));
+                                ScanSpec(None, None, None, 1, 0, None, None, ["StartRow","Location"]))
 
   ranges = [ ]
   cur = { }
@@ -43,8 +43,8 @@ try:
       elif cell.key.column_family == "Location":
         cur['Location'] = cell.value
       else:
-        print "Unrecognized column family'%s'" % (cell.key.column_family)
-        sys.exit(1)           
+        print("Unrecognized column family'%s'" % (cell.key.column_family))
+        sys.exit(1)
 
   if 'StartRow' in cur:
     ranges.append(cur)
@@ -55,15 +55,15 @@ try:
     offset = random.randint(0, len(ranges)-1)
     if not ranges[offset]['TableId'].startswith("0/") and ranges[offset]['Location'] == source:
       destination = "rs2"
-      break;
+      break
 
   if ranges[offset]['StartRow'] is None:
-    print 'balance (\"%s\"[..\"%s\"], \"%s\", \"%s\") duration=%d;' % (ranges[offset]['TableId'], ranges[offset]['EndRow'], ranges[offset]['Location'], destination, 5)
+    print('balance (\"%s\"[..\"%s\"], \"%s\", \"%s\") duration=%d;' % (ranges[offset]['TableId'], ranges[offset]['EndRow'], ranges[offset]['Location'], destination, 5))
   else:
-    print 'balance (\"%s\"[\"%s\"..\"%s\"], \"%s\", \"%s\") duration=%d;' % (ranges[offset]['TableId'], ranges[offset]['StartRow'], ranges[offset]['EndRow'], ranges[offset]['Location'], destination, 5)
+    print('balance (\"%s\"[\"%s\"..\"%s\"], \"%s\", \"%s\") duration=%d;' % (ranges[offset]['TableId'], ranges[offset]['StartRow'], ranges[offset]['EndRow'], ranges[offset]['Location'], destination, 5))
 
 #  for range in ranges:
 #    print range
 
-except ClientException, e:
-  print '%s' % (e.message)
+except ClientException as e:
+  print('%s' % (e.message))

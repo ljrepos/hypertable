@@ -6,8 +6,8 @@ from hypertable.thriftclient import *
 from hyperthrift.gen.ttypes import *
 
 if (len(sys.argv) < 4):
-  print sys.argv[0], "<table> <row-key> <column>"
-  sys.exit(1);
+  print(sys.argv[0], "<table> <row-key> <column>")
+  sys.exit(1)
 
 try:
   client = ThriftClient("localhost", 15867)
@@ -17,9 +17,9 @@ try:
   mutator = client.mutator_open(namespace, sys.argv[1], 0, 0)
 
   client.mutator_set_cell(mutator, Cell(Key(sys.argv[2], sys.argv[3], None), "thrift_insert.py"))
-  client.mutator_flush(mutator);
+  client.mutator_flush(mutator)
 
   client.close_namespace(namespace)
 
-except ClientException, e:
-  print '%s' % (e.message)
+except ClientException as e:
+  print('%s' % (e.message))
