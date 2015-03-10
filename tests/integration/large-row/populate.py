@@ -102,7 +102,7 @@ try:
 
   mutator = client.mutator_open(namespace, "LargeRowTest", 0, 0)
 
-  iterations = int(sys.argv[1]) / len(story);
+  iterations = int(sys.argv[1]) // len(story);
 
   for x in range(0, iterations):
     cutoff = random.randint(0, len(story));
