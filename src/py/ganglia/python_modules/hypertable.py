@@ -51,9 +51,9 @@ def metric_init(params):
     try:
         sock.bind(("127.0.0.1", LISTEN_PORT))
     except socket_error as serr:
-        print "error: unable to bind to port", LISTEN_PORT, "-", os.strerror(serr.errno)
+        print("error: unable to bind to port", LISTEN_PORT, "-", os.strerror(serr.errno))
         sys.exit(1)
-    sock.setblocking(0);
+    sock.setblocking(0)
 
     ##
     ## Specifying all version metrics for all hosts renders better in the UI
@@ -81,7 +81,7 @@ def metric_init(params):
          'groups': 'hypertable FSBroker'}
     values['ht.fsbroker.type'] = 'n/a'
     descriptors.append(d);
-    
+
     d = {'name': 'ht.master.version',
          'call_back': metric_callback,
          'value_type': 'string',
@@ -89,7 +89,7 @@ def metric_init(params):
          'groups': 'hypertable Master'}
     values['ht.master.version'] = 'n/a'
     descriptors.append(d);
-    
+
     d = {'name': 'ht.rangeserver.version',
          'call_back': metric_callback,
          'value_type': 'string',
@@ -121,7 +121,7 @@ def metric_init(params):
              'description': 'Request rate',
              'groups': 'hypertable Hyperspace'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.hyperspace.cpu.sys',
              'call_back': metric_callback,
              'time_max': 90,
@@ -132,7 +132,7 @@ def metric_init(params):
              'description': 'Process CPU system time',
              'groups': 'hypertable Hyperspace'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.hyperspace.cpu.user',
              'call_back': metric_callback,
              'time_max': 90,
@@ -143,7 +143,7 @@ def metric_init(params):
              'description': 'Process CPU user time',
              'groups': 'hypertable Hyperspace'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.hyperspace.memory.virtual',
              'call_back': metric_callback,
              'time_max': 90,
@@ -154,7 +154,7 @@ def metric_init(params):
              'description': 'Virtual memory',
              'groups': 'hypertable Hyperspace'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.hyperspace.memory.resident',
              'call_back': metric_callback,
              'time_max': 90,
@@ -165,7 +165,7 @@ def metric_init(params):
              'description': 'Resident memory',
              'groups': 'hypertable Hyperspace'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.hyperspace.memory.heap',
              'call_back': metric_callback,
              'time_max': 90,
@@ -176,7 +176,7 @@ def metric_init(params):
              'description': 'Heap memory',
              'groups': 'hypertable Hyperspace'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.hyperspace.memory.heapSlack',
              'call_back': metric_callback,
              'time_max': 90,
@@ -258,7 +258,7 @@ def metric_init(params):
                  'description': 'JVM GCs',
                  'groups': 'hypertable FSBroker'}
             descriptors.append(d);
-            
+
             d = {'name': 'ht.fsbroker.jvm.gcTime',
                  'call_back': metric_callback,
                  'time_max': 90,
@@ -269,7 +269,7 @@ def metric_init(params):
                  'description': 'JVM GC time',
                  'groups': 'hypertable FSBroker'}
             descriptors.append(d);
-            
+
             d = {'name': 'ht.fsbroker.jvm.heapSize',
                  'call_back': metric_callback,
                  'time_max': 90,
@@ -280,7 +280,7 @@ def metric_init(params):
                  'description': 'JVM heap size',
                  'groups': 'hypertable FSBroker'}
             descriptors.append(d);
-        
+
         d = {'name': 'ht.fsbroker.cpu.sys',
              'call_back': metric_callback,
              'time_max': 90,
@@ -291,7 +291,7 @@ def metric_init(params):
              'description': 'Process CPU system time',
              'groups': 'hypertable FSBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.fsbroker.cpu.user',
              'call_back': metric_callback,
              'time_max': 90,
@@ -302,7 +302,7 @@ def metric_init(params):
              'description': 'Process CPU user time',
              'groups': 'hypertable FSBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.fsbroker.memory.virtual',
              'call_back': metric_callback,
              'time_max': 90,
@@ -313,7 +313,7 @@ def metric_init(params):
              'description': 'Virtual memory',
              'groups': 'hypertable FSBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.fsbroker.memory.resident',
              'call_back': metric_callback,
              'time_max': 90,
@@ -336,7 +336,7 @@ def metric_init(params):
                  'description': 'Heap memory',
                  'groups': 'hypertable FSBroker'}
             descriptors.append(d);
-            
+
             d = {'name': 'ht.fsbroker.memory.heapSlack',
                  'call_back': metric_callback,
                  'time_max': 90,
@@ -347,7 +347,7 @@ def metric_init(params):
                  'description': 'Heap slack bytes',
                  'groups': 'hypertable FSBroker'}
             descriptors.append(d);
-        
+
     ##
     ## Master metrics
     ##
@@ -362,7 +362,7 @@ def metric_init(params):
              'description': 'Operation rate',
              'groups': 'hypertable Master'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.master.cpu.sys',
              'call_back': metric_callback,
              'time_max': 90,
@@ -373,7 +373,7 @@ def metric_init(params):
              'description': 'Process CPU system time',
              'groups': 'hypertable Master'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.master.cpu.user',
              'call_back': metric_callback,
              'time_max': 90,
@@ -384,7 +384,7 @@ def metric_init(params):
              'description': 'Process CPU user time',
              'groups': 'hypertable Master'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.master.memory.virtual',
              'call_back': metric_callback,
              'time_max': 90,
@@ -395,7 +395,7 @@ def metric_init(params):
              'description': 'Virtual memory',
              'groups': 'hypertable Master'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.master.memory.resident',
              'call_back': metric_callback,
              'time_max': 90,
@@ -406,7 +406,7 @@ def metric_init(params):
              'description': 'Resident memory',
              'groups': 'hypertable Master'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.master.memory.heap',
              'call_back': metric_callback,
              'time_max': 90,
@@ -417,7 +417,7 @@ def metric_init(params):
              'description': 'Heap memory',
              'groups': 'hypertable Master'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.master.memory.heapSlack',
              'call_back': metric_callback,
              'time_max': 90,
@@ -443,7 +443,7 @@ def metric_init(params):
              'description': 'Scans per second',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.updates',
              'call_back': metric_callback,
              'time_max': 90,
@@ -454,7 +454,7 @@ def metric_init(params):
              'description': 'Updates per second',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.cellsReturned',
              'call_back': metric_callback,
              'time_max': 90,
@@ -487,7 +487,7 @@ def metric_init(params):
              'description': 'Cell scan yield',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.cellsWritten',
              'call_back': metric_callback,
              'time_max': 90,
@@ -531,7 +531,7 @@ def metric_init(params):
              'description': 'Byte scan yield',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.bytesWritten',
              'call_back': metric_callback,
              'time_max': 90,
@@ -553,7 +553,7 @@ def metric_init(params):
              'description': 'Request backlog',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.compactions.major',
              'call_back': metric_callback,
              'time_max': 90,
@@ -564,7 +564,7 @@ def metric_init(params):
              'description': 'Major compactions',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.compactions.minor',
              'call_back': metric_callback,
              'time_max': 90,
@@ -575,7 +575,7 @@ def metric_init(params):
              'description': 'Minor compactions',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.compactions.merging',
              'call_back': metric_callback,
              'time_max': 90,
@@ -586,7 +586,7 @@ def metric_init(params):
              'description': 'Merging compactions',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.compactions.gc',
              'call_back': metric_callback,
              'time_max': 90,
@@ -597,7 +597,7 @@ def metric_init(params):
              'description': 'GC compactions',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.scanners',
              'call_back': metric_callback,
              'time_max': 90,
@@ -608,7 +608,7 @@ def metric_init(params):
              'description': 'Outstanding scanner count',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.cellstores',
              'call_back': metric_callback,
              'time_max': 90,
@@ -619,7 +619,7 @@ def metric_init(params):
              'description': 'CellStore count',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.ranges',
              'call_back': metric_callback,
              'time_max': 90,
@@ -630,7 +630,7 @@ def metric_init(params):
              'description': 'Range count',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.memory.virtual',
              'call_back': metric_callback,
              'time_max': 90,
@@ -641,7 +641,7 @@ def metric_init(params):
              'description': 'Virtual memory',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.memory.resident',
              'call_back': metric_callback,
              'time_max': 90,
@@ -652,7 +652,7 @@ def metric_init(params):
              'description': 'Resident memory',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.memory.heap',
              'call_back': metric_callback,
              'time_max': 90,
@@ -663,7 +663,7 @@ def metric_init(params):
              'description': 'Heap memory',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.memory.heapSlack',
              'call_back': metric_callback,
              'time_max': 90,
@@ -674,7 +674,7 @@ def metric_init(params):
              'description': 'Heap slack bytes',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.memory.tracked',
              'call_back': metric_callback,
              'time_max': 90,
@@ -685,7 +685,7 @@ def metric_init(params):
              'description': 'Tracked memory',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.cpu.sys',
              'call_back': metric_callback,
              'time_max': 90,
@@ -696,7 +696,7 @@ def metric_init(params):
              'description': 'Process CPU system time',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.cpu.user',
              'call_back': metric_callback,
              'time_max': 90,
@@ -707,7 +707,7 @@ def metric_init(params):
              'description': 'Process CPU user time',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.blockCache.hitRate',
              'call_back': metric_callback,
              'time_max': 90,
@@ -718,7 +718,7 @@ def metric_init(params):
              'description': 'Block cache hit rate',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.blockCache.memory',
              'call_back': metric_callback,
              'time_max': 90,
@@ -729,7 +729,7 @@ def metric_init(params):
              'description': 'Block cache memory',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.blockCache.fill',
              'call_back': metric_callback,
              'time_max': 90,
@@ -740,7 +740,7 @@ def metric_init(params):
              'description': 'Block cache fill',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.queryCache.hitRate',
              'call_back': metric_callback,
              'time_max': 90,
@@ -751,7 +751,7 @@ def metric_init(params):
              'description': 'Query cache hit rate',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.queryCache.memory',
              'call_back': metric_callback,
              'time_max': 90,
@@ -762,7 +762,7 @@ def metric_init(params):
              'description': 'Query cache memory',
              'groups': 'hypertable RangeServer'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.rangeserver.queryCache.fill',
              'call_back': metric_callback,
              'time_max': 90,
@@ -799,7 +799,7 @@ def metric_init(params):
              'description': 'Request rate',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.errors',
              'call_back': metric_callback,
              'time_max': 90,
@@ -810,7 +810,7 @@ def metric_init(params):
              'description': 'Error rate',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.connections',
              'call_back': metric_callback,
              'time_max': 90,
@@ -821,7 +821,7 @@ def metric_init(params):
              'description': 'Active connection count',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.cpu.sys',
              'call_back': metric_callback,
              'time_max': 90,
@@ -832,7 +832,7 @@ def metric_init(params):
              'description': 'Process CPU system time',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.cpu.user',
              'call_back': metric_callback,
              'time_max': 90,
@@ -843,7 +843,7 @@ def metric_init(params):
              'description': 'Process CPU user time',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.memory.virtual',
              'call_back': metric_callback,
              'time_max': 90,
@@ -854,7 +854,7 @@ def metric_init(params):
              'description': 'Virtual memory',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.memory.resident',
              'call_back': metric_callback,
              'time_max': 90,
@@ -865,7 +865,7 @@ def metric_init(params):
              'description': 'Resident memory',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.memory.heap',
              'call_back': metric_callback,
              'time_max': 90,
@@ -876,7 +876,7 @@ def metric_init(params):
              'description': 'Heap memory',
              'groups': 'hypertable ThriftBroker'}
         descriptors.append(d);
-        
+
         d = {'name': 'ht.thriftbroker.memory.heapSlack',
              'call_back': metric_callback,
              'time_max': 90,
@@ -899,7 +899,7 @@ def metric_cleanup():
 #This code is for debugging and unit testing
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print "usage: hypertable.py <metric>"
+        print("usage: hypertable.py <metric>")
         sys.exit(0)
     params = { 'FSBroker': 'hadoop',
                'EnableFSBroker': '1',
@@ -910,5 +910,5 @@ if __name__ == '__main__':
     metric_init(params)
     while True:
         value = metric_callback(sys.argv[1])
-        print sys.argv[1], "=", value
+        print(sys.argv[1], "=", value)
         time.sleep(30)
