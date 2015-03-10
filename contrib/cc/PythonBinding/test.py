@@ -22,7 +22,7 @@ table = client.open_table("dummy4")
 #while scanner.next(cell):
   # note that instead of cell.value and cell.value_len fields
   # you get single cell.value() function returning the value from the cell
-  #print "%s:%s %s" % (cell.row_key, cell.column_family, cell.value())
+  #print("%s:%s %s" % (cell.row_key, cell.column_family, cell.value()))
 
 
 # create table mutator
@@ -32,15 +32,14 @@ mutator = table.create_mutator(10)
 families = ['meta', 'blob']
 k = 10000
 i = 1
-while i < k+1 :
+while i < k+1:
   row = "row-%s" % (i)
   family = families[0]
   qualifier = ""
   value = 'a' * 10 * 1024
   if i % 5000 == 0:
-    print "%s/%s" % (i,k)
+    print("%s/%s" % (i,k))
   mutator.set(row, family, qualifier, value, len(value))
   i = i + 1
 
 mutator.flush()
-
