@@ -6,7 +6,7 @@ from hyperthrift.gen.ttypes import *
 
 try:
   client = ThriftClient("localhost", 15867)
-  print "SerializedCellsReader example"
+  print("SerializedCellsReader example")
 
   namespace = client.namespace_open("test")
   client.hql_query(namespace, "drop table if exists thrift_test")
@@ -39,15 +39,15 @@ try:
       break
     scr = libHyperPython.SerializedCellsReader(buf, len(buf))
     while scr.has_next():
-      print scr.row(),
-      print scr.column_family(),
+      print(scr.row()),
+      print(scr.column_family()),
       s = ''
       for i in range(scr.value_len()):
         s += scr.value()[i]
-      print s
+      print(s)
 
   client.scanner_close(scanner)
   client.namespace_close(namespace)
 except:
-  print sys.exc_info()
+  print(sys.exc_info())
   raise
