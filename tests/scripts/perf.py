@@ -30,11 +30,11 @@ test_file = os.path.expanduser(options.test_file)
 golden_file = os.path.expanduser(options.golden_file)
 relative_threshold = float(options.relative_threshold)
 absolute_threshold = int(options.absolute_threshold)
-print "================================================================================="
-print "Golden file: ", golden_file
-print "Test file: ", test_file
-print "Relative Threshold: ", relative_threshold
-print "Absolute Threshold: ", absolute_threshold, "s"
+print("=================================================================================")
+print("Golden file: ", golden_file)
+print("Test file: ", test_file)
+print("Relative Threshold: ", relative_threshold)
+print("Absolute Threshold: ", absolute_threshold, "s")
 
 def parsePerfState(filename):
   hash = {}
@@ -60,22 +60,22 @@ def parseTime(time_string):
 
 def printReport(errors, warnings):
   global golden_file, test_file, threshold
-  print "================================================================================="
-  print "Errors: ", len(errors)
+  print("=================================================================================")
+  print("Errors: ", len(errors))
   for error in errors:
-    print error
-  print "================================================================================="
-  print "Warnings: ", len(warnings)
+    print(error)
+  print("=================================================================================")
+  print("Warnings: ", len(warnings))
   for warning in warnings:
-    print warning
-  print "================================================================================="
+    print(warning)
+  print("=================================================================================")
 
 golden = parsePerfState(golden_file)
 test = parsePerfState(test_file)
 errors = []
 warnings = []
 
-for name, time in test.iteritems():
+for name, time in test.items():
   if (name in golden):
     golden_time = golden[name]
     if (time > int(float(golden_time)*1.1) and time-golden_time > absolute_threshold):
