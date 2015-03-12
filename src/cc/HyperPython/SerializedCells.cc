@@ -22,13 +22,22 @@
 #include "../ThriftBroker/SerializedCellsWriter.h"
 
 #include <boost/python.hpp>
+#include <string>
 
 using namespace Hypertable;
 using namespace boost::python;
 
-typedef bool (SerializedCellsWriter::*addfn)(const char *row, 
-                const char *column_family, const char *column_qualifier, 
-                int64_t timestamp, const char *value, int32_t value_length, 
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 3
+static PyObject *PyBuffer_FromMemory(void *ptr, Py_ssize_t size)
+{
+  // New style buffer interface - PyMemoryView_FromMemory available since 3.3
+  return PyMemoryView_FromMemory((char *)ptr, size, PyBUF_READ);
+}
+#endif // Python version test
+
+typedef bool (SerializedCellsWriter::*addfn)(const char *row,
+                const char *column_family, const char *column_qualifier,
+                int64_t timestamp, const char *value, int32_t value_length,
                 int cell_flag);
 typedef const char *(SerializedCellsWriter::*getfn)();
 typedef int32_t (SerializedCellsWriter::*getlenfn)();
@@ -42,6 +51,26 @@ static PyObject *convert(const SerializedCellsWriter &scw) {
   return boost::python::incref(obj.ptr());
 }
 
+// static SerializedCellsReader *initbuf(PyObject *buf, uint32_t len) {
+//     PyObject *mview = PyMemoryView_FromObject(buf);
+//     Py_buffer *pybuf = PyMemoryView_GET_BUFFER(mview);
+//     return new SerializedCellsReader(pybuf->buf, len);
+// }
+
+class SerializedCellsReaderPy : public SerializedCellsReader
+{
+public:
+  SerializedCellsReaderPy(PyObject *buf, uint32_t len) 
+    : SerializedCellsReader((char *)PyMemoryView_GET_BUFFER(
+                              PyMemoryView_FromObject(buf))->buf, len)
+
+  {}
+
+  const std::string value() {
+    return std::string(value_str(), value_len());
+  }
+};
+    
 BOOST_PYTHON_MODULE(libHyperPython)
 {
 
@@ -57,26 +86,26 @@ BOOST_PYTHON_MODULE(libHyperPython)
     .def(self_ns::str(self_ns::self))
     ;
 
-  class_<SerializedCellsReader>("SerializedCellsReader", 
-          init<const char *, uint32_t>())
-    .def("has_next", &SerializedCellsReader::next)
-    .def("get_cell", &SerializedCellsReader::get_cell,
+  class_<SerializedCellsReaderPy>("SerializedCellsReader",
+          init<PyObject *, uint32_t>())
+    .def("has_next", &SerializedCellsReaderPy::next)
+    .def("get_cell", &SerializedCellsReaderPy::get_cell,
           return_value_policy<return_by_value>())
-    .def("row", &SerializedCellsReader::row,
+    .def("row", &SerializedCellsReaderPy::row,
           return_value_policy<return_by_value>())
-    .def("column_family", &SerializedCellsReader::column_family,
+    .def("column_family", &SerializedCellsReaderPy::column_family,
           return_value_policy<return_by_value>())
-    .def("column_qualifier", &SerializedCellsReader::column_qualifier,
+    .def("column_qualifier", &SerializedCellsReaderPy::column_qualifier,
           return_value_policy<return_by_value>())
-    .def("value", &SerializedCellsReader::value_str,
+    .def("value", &SerializedCellsReaderPy::value,
           return_value_policy<return_by_value>())
-    .def("value_len", &SerializedCellsReader::value_len)
-    .def("value_str", &SerializedCellsReader::value_str,
+    .def("value_len", &SerializedCellsReaderPy::value_len)
+    .def("value_str", &SerializedCellsReaderPy::value_str,
           return_value_policy<return_by_value>())
-    .def("timestamp", &SerializedCellsReader::timestamp)
-    .def("cell_flag", &SerializedCellsReader::cell_flag)
-    .def("flush", &SerializedCellsReader::flush)
-    .def("eos", &SerializedCellsReader::eos)
+    .def("timestamp", &SerializedCellsReaderPy::timestamp)
+    .def("cell_flag", &SerializedCellsReaderPy::cell_flag)
+    .def("flush", &SerializedCellsReaderPy::flush)
+    .def("eos", &SerializedCellsReaderPy::eos)
   ;
 
   class_<SerializedCellsWriter, boost::noncopyable>("SerializedCellsWriter",
