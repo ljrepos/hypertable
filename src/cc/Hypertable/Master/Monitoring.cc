@@ -809,9 +809,9 @@ void Monitoring::run_rrdtool(std::vector<String> &command) {
   String cmd = "env LD_LIBRARY_PATH= DYLD_LIBRARY_PATH= rrdtool";
 
   foreach_ht (const String &s, command) {
-    cmd += " \"";
+    cmd += " ";
     cmd += s;
-    cmd += "\" ";
+    cmd += " ";
   }
 
   HT_DEBUGF("run_rrdtool: %s", cmd.c_str());
