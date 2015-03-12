@@ -39,8 +39,8 @@ try:
       break
     scr = libHyperPython.SerializedCellsReader(buf, len(buf))
     while scr.has_next():
-      print(scr.row()),
-      print(scr.column_family()),
+      print(scr.row(), end=' '),
+      print(scr.column_family(), end=' '),
       s = ''
       for i in range(scr.value_len()):
         s += scr.value()[i]
