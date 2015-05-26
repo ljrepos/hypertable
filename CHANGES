@@ -1,3 +1,8 @@
+Version 0.9.8.9:
+(2015-05-26)
+
+  Fixed NO_LOG flag propagation and excessive sync'ing in TableMutatorAsync
+
 Version 0.9.8.8:
 (2015-05-15)
 
