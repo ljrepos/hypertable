@@ -22,6 +22,7 @@ Version 0.9.8.9:
    Replaced poll() with this_thread::sleep_for()
    Replaced _exit with quick_exit; Replaced numeric exit codes with EXIT_SUCCESS & EXIT_FAILURE
 
+
 Version 0.9.8.8:
 (2015-05-15)
 
