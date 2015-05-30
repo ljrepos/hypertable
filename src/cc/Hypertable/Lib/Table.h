@@ -69,14 +69,13 @@ namespace Hypertable {
     };
 
     enum {
-      MUTATOR_FLAG_NO_LOG_SYNC = Lib::RangeServer::Protocol::UPDATE_FLAG_NO_LOG_SYNC
+      MUTATOR_FLAG_NO_LOG_SYNC = Lib::RangeServer::Protocol::UPDATE_FLAG_NO_LOG_SYNC,
+      MUTATOR_FLAG_NO_LOG      = Lib::RangeServer::Protocol::UPDATE_FLAG_NO_LOG
     };
 
-    Table(PropertiesPtr &, ConnectionManagerPtr &, Hyperspace::SessionPtr &,
-          NameIdMapperPtr &namemap, const std::string &name, int32_t flags=0);
     Table(PropertiesPtr &, RangeLocatorPtr &, ConnectionManagerPtr &,
           Hyperspace::SessionPtr &, ApplicationQueueInterfacePtr &, NameIdMapperPtr &,
-          const std::string &name, int32_t flags, uint32_t default_timeout_ms);
+          const std::string &name, int32_t flags = 0, uint32_t default_timeout_ms = 0);
     virtual ~Table();
 
     /**
@@ -138,7 +137,7 @@ namespace Hypertable {
       *table_id_p = m_table;
     }
 
-    std::string get_name() {
+    const std::string& get_name() {
       ScopedLock lock(m_mutex);
       return m_name;
     }

@@ -69,13 +69,15 @@ namespace Hypertable {
 
     CommAddress get_comm_address();
 
-    const String location() const { return m_location; }
-    const String hostname() const { return m_hostname; }
+    const String& location() const { return m_location; }
+    const String& hostname() const { return m_hostname; }
     InetAddr local_addr() const { return m_local_addr; }
     InetAddr public_addr() const { return m_public_addr; }
 
-    virtual const String name() { return "RangeServerConnection"; }
-    virtual void display(std::ostream &os);
+    const std::string to_str();
+
+    const String name() override { return "RangeServerConnection"; }
+    void display(std::ostream &os) override;
 
     /** Decodes serialized RangeServerConnection object.
      * @param bufp Address of source buffer pointer (advanced by call)

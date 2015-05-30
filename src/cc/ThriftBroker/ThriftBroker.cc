@@ -313,14 +313,32 @@ convert_scan_spec(const ThriftGen::ScanSpec &tss, Hypertable::ScanSpec &hss) {
     hss.and_column_predicates = tss.and_column_predicates;
 
   // shallow copy
-  foreach_ht(const ThriftGen::RowInterval &ri, tss.row_intervals)
-    hss.row_intervals.push_back(Hypertable::RowInterval(ri.start_row.c_str(),
-        ri.start_inclusive, ri.end_row.c_str(), ri.end_inclusive));
+  const char *start_row;
+  const char *end_row;
+  foreach_ht(const ThriftGen::RowInterval &ri, tss.row_intervals) {
+    start_row = ri.__isset.start_row ?
+                ri.start_row.c_str() :
+                ri.__isset.start_row_binary ?
+                ri.start_row_binary.c_str() :
+                "";
+    end_row = ri.__isset.end_row ?
+              ri.end_row.c_str() :
+              ri.__isset.end_row_binary ?
+              ri.end_row_binary.c_str() :
+              Hypertable::Key::END_ROW_MARKER;
+    hss.row_intervals.push_back(Hypertable::RowInterval(
+      start_row, ri.__isset.start_inclusive && ri.start_inclusive,
+      end_row, ri.__isset.end_inclusive && ri.end_inclusive));
+  }
 
   foreach_ht(const ThriftGen::CellInterval &ci, tss.cell_intervals)
     hss.cell_intervals.push_back(Hypertable::CellInterval(
-        ci.start_row.c_str(), ci.start_column.c_str(), ci.start_inclusive,
-        ci.end_row.c_str(), ci.end_column.c_str(), ci.end_inclusive));
+        ci.__isset.start_row ? ci.start_row.c_str() : "",
+        ci.start_column.c_str(),
+        ci.__isset.start_inclusive && ci.start_inclusive,
+        ci.__isset.end_row ? ci.end_row.c_str() : Hypertable::Key::END_ROW_MARKER,
+        ci.end_column.c_str(),
+        ci.__isset.end_inclusive && ci.end_inclusive));
 
   foreach_ht(const std::string &col, tss.columns)
     hss.columns.push_back(col.c_str());
@@ -328,9 +346,13 @@ convert_scan_spec(const ThriftGen::ScanSpec &tss, Hypertable::ScanSpec &hss) {
   foreach_ht(const ThriftGen::ColumnPredicate &cp, tss.column_predicates) {
     HT_INFOF("%s:%s %s", cp.column_family.c_str(), cp.column_qualifier.c_str(),
              cp.__isset.value ? cp.value.c_str() : "");
-    hss.column_predicates.push_back(Hypertable::ColumnPredicate(
-     cp.column_family.c_str(), cp.column_qualifier.c_str(), cp.operation, 
-     cp.__isset.value ? cp.value.c_str() : 0));
+    hss.column_predicates.push_back(
+      Hypertable::ColumnPredicate(
+        cp.__isset.column_family ? cp.column_family.c_str() : 0,
+        cp.__isset.column_qualifier ? cp.column_qualifier.c_str() : 0,
+        cp.operation,
+        cp.__isset.value ? cp.value.c_str() : 0,
+        cp.__isset.value ? cp.value.size() : 0));
   }
 }
 
@@ -388,24 +410,43 @@ convert_scan_spec(const ThriftGen::ScanSpec &tss, Hypertable::ScanSpecBuilder &s
     ssb.add_column(col);
 
   // row intervals
+  const char *start_row;
+  const char *end_row;
   ssb.reserve_rows(tss.row_intervals.size());
-  for (auto & ri : tss.row_intervals)
-    ssb.add_row_interval(ri.start_row, ri.start_inclusive,
-                         ri.end_row, ri.end_inclusive);
+  for (auto & ri : tss.row_intervals) {
+    start_row = ri.__isset.start_row ?
+                ri.start_row.c_str() :
+                ri.__isset.start_row_binary ?
+                ri.start_row_binary.c_str() : "";
+    end_row = ri.__isset.end_row ?
+              ri.end_row.c_str() :
+              ri.__isset.end_row_binary ?
+              ri.end_row_binary.c_str() : Hypertable::Key::END_ROW_MARKER;
+    ssb.add_row_interval(
+      start_row, ri.__isset.start_inclusive && ri.start_inclusive,
+      end_row, ri.__isset.end_inclusive && ri.end_inclusive);
+  }
 
   // cell intervals
   ssb.reserve_cells(tss.cell_intervals.size());
   for (auto & ci : tss.cell_intervals)
-    ssb.add_cell_interval(ci.start_row, ci.start_column, ci.start_inclusive,
-                          ci.end_row, ci.end_column, ci.end_inclusive);
+    ssb.add_cell_interval(
+        ci.__isset.start_row ? ci.start_row.c_str() : "",
+        ci.start_column.c_str(),
+        ci.__isset.start_inclusive && ci.start_inclusive,
+        ci.__isset.end_row ? ci.end_row.c_str() : Hypertable::Key::END_ROW_MARKER,
+        ci.end_column.c_str(),
+        ci.__isset.end_inclusive && ci.end_inclusive);
 
   // column predicates
   ssb.reserve_column_predicates(tss.column_predicates.size());
   for (auto & cp : tss.column_predicates)
-    ssb.add_column_predicate(cp.column_family, cp.column_qualifier.c_str(),
-                             cp.operation, 
-                             cp.__isset.value ? cp.value.c_str() : 0);
-
+    ssb.add_column_predicate(
+        cp.__isset.column_family ? cp.column_family.c_str() : 0,
+        cp.__isset.column_qualifier ? cp.column_qualifier.c_str() : 0,
+        cp.operation,
+        cp.__isset.value ? cp.value.c_str() : 0,
+        cp.__isset.value ? cp.value.size() : 0);
 }
 
 void
@@ -2457,7 +2498,7 @@ public:
 
     if (hresult->is_scan()) {
       tresult.is_scan = true;
-      tresult.id = get_object_id(hresult->get_scanner());
+      tresult.id = try_get_object_id(hresult->get_scanner());
       if (hresult->is_error()) {
         tresult.is_error = true;
         hresult->get_error(tresult.error, tresult.error_msg);
@@ -2473,7 +2514,7 @@ public:
     }
     else {
       tresult.is_scan = false;
-      tresult.id = get_object_id(hresult->get_mutator());
+      tresult.id = try_get_object_id(hresult->get_mutator());
       if (hresult->is_error()) {
         tresult.is_error = true;
         hresult->get_error(tresult.error, tresult.error_msg);
@@ -2491,7 +2532,7 @@ public:
 
     if (hresult->is_scan()) {
       tresult.is_scan = true;
-      tresult.id = get_object_id(hresult->get_scanner());
+      tresult.id = try_get_object_id(hresult->get_scanner());
       if (hresult->is_error()) {
         tresult.is_error = true;
         hresult->get_error(tresult.error, tresult.error_msg);
@@ -2517,7 +2558,7 @@ public:
 
     if (hresult->is_scan()) {
       tresult.is_scan = true;
-      tresult.id = get_object_id(hresult->get_scanner());
+      tresult.id = try_get_object_id(hresult->get_scanner());
       if (hresult->is_error()) {
         tresult.is_error = true;
         hresult->get_error(tresult.error, tresult.error_msg);
@@ -2718,6 +2759,12 @@ public:
     int64_t id = reinterpret_cast<int64_t>(co.get());
     m_object_map.insert(make_pair(id, co)); // no overwrite
     return id;
+  }
+
+  int64_t try_get_object_id(ClientObject* co) {
+    ScopedLock lock(m_mutex);
+    int64_t id = reinterpret_cast<int64_t>(co);
+    return m_object_map.find(id) != m_object_map.end() ? id : 0;
   }
 
   int64_t get_scanner_id(TableScanner *scanner, ScannerInfoPtr &info) {

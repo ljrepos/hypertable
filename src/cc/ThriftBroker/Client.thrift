@@ -94,6 +94,8 @@ struct RowInterval {
   2: optional bool start_inclusive = 1
   3: optional string end_row    # 'end' chokes ruby
   4: optional bool end_inclusive = 1
+  5: optional binary start_row_binary
+  6: optional binary end_row_binary
 }
 
 /** Specifies a range of cells
@@ -313,10 +315,12 @@ struct Key {
  *
  * NO_LOG_SYNC: Do not sync the commit log
  * IGNORE_UNKNOWN_CFS: Don't throw exception if mutator writes to unknown column family
+ * NO_LOG: Don't write to the commit log
  */
 enum MutatorFlag {
   NO_LOG_SYNC = 1,
-  IGNORE_UNKNOWN_CFS = 2
+  IGNORE_UNKNOWN_CFS = 2,
+  NO_LOG = 4
 }
 
 /** Specifies options for a shared periodic mutator 
@@ -516,8 +520,8 @@ struct NamespaceListing {
  * </dl>
  */
 struct TableSplit {
-  1: optional string start_row
-  2: optional string end_row
+  1: optional binary start_row
+  2: optional binary end_row
   3: optional string location
   4: optional string ip_address
   5: optional string hostname

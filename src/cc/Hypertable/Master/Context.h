@@ -33,6 +33,7 @@
 #include "Monitoring.h"
 #include "RangeServerConnection.h"
 #include "RangeServerConnectionManager.h"
+#include "RecoveredServers.h"
 #include "RecoveryStepFuture.h"
 #include "SystemState.h"
 
@@ -45,6 +46,7 @@
 
 #include <AsyncComm/Comm.h>
 #include <AsyncComm/ConnectionManager.h>
+#include <AsyncComm/ApplicationQueue.h>
 
 #include <Common/Filesystem.h>
 #include <Common/Properties.h>
@@ -145,12 +147,15 @@ namespace Hypertable {
     ConnectionManagerPtr conn_manager;
     MetricsHandlerPtr metrics_handler;
     Hyperspace::SessionPtr hyperspace;
+    ApplicationQueuePtr app_queue;
+    RangeLocatorPtr range_locator;
     String toplevel_dir;
     NameIdMapperPtr namemap;
     /// %Hyperspace master file handle
     std::unique_ptr<HyperspaceMasterFile> master_file;
     LoadBalancer *balancer {};
     MonitoringPtr monitoring;
+    RecoveredServersPtr recovered_servers;
     std::unique_ptr<ReferenceManager> reference_manager;
     std::unique_ptr<Thread> response_manager_thread;
     std::unique_ptr<ResponseManager> response_manager;
@@ -231,6 +236,9 @@ namespace Hypertable {
     void get_balance_plan_authority(MetaLog::EntityPtr &entity);
 
     RecoveryState &recovery_state() { return m_recovery_state; }
+
+    // Instantiate a new table object
+    Table* new_table(const std::string &name);
 
   private:
 

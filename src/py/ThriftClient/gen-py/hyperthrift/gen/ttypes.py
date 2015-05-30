@@ -101,18 +101,22 @@ class MutatorFlag(object):
 
   NO_LOG_SYNC: Do not sync the commit log
   IGNORE_UNKNOWN_CFS: Don't throw exception if mutator writes to unknown column family
+  NO_LOG: Don't write to the commit log
   """
   NO_LOG_SYNC = 1
   IGNORE_UNKNOWN_CFS = 2
+  NO_LOG = 4
 
   _VALUES_TO_NAMES = {
     1: "NO_LOG_SYNC",
     2: "IGNORE_UNKNOWN_CFS",
+    4: "NO_LOG",
   }
 
   _NAMES_TO_VALUES = {
     "NO_LOG_SYNC": 1,
     "IGNORE_UNKNOWN_CFS": 2,
+    "NO_LOG": 4,
   }
 
 class StatusCode(object):
@@ -162,6 +166,8 @@ class RowInterval(object):
    - start_inclusive
    - end_row
    - end_inclusive
+   - start_row_binary
+   - end_row_binary
   """
 
   thrift_spec = (
@@ -170,13 +176,17 @@ class RowInterval(object):
     (2, TType.BOOL, 'start_inclusive', None, True, ), # 2
     (3, TType.STRING, 'end_row', None, None, ), # 3
     (4, TType.BOOL, 'end_inclusive', None, True, ), # 4
+    (5, TType.STRING, 'start_row_binary', None, None, ), # 5
+    (6, TType.STRING, 'end_row_binary', None, None, ), # 6
   )
 
-  def __init__(self, start_row=None, start_inclusive=thrift_spec[2][4], end_row=None, end_inclusive=thrift_spec[4][4],):
+  def __init__(self, start_row=None, start_inclusive=thrift_spec[2][4], end_row=None, end_inclusive=thrift_spec[4][4], start_row_binary=None, end_row_binary=None,):
     self.start_row = start_row
     self.start_inclusive = start_inclusive
     self.end_row = end_row
     self.end_inclusive = end_inclusive
+    self.start_row_binary = start_row_binary
+    self.end_row_binary = end_row_binary
 
   def read(self, iprot):
     if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None and fastbinary is not None:
@@ -207,6 +217,16 @@ class RowInterval(object):
           self.end_inclusive = iprot.readBool()
         else:
           iprot.skip(ftype)
+      elif fid == 5:
+        if ftype == TType.STRING:
+          self.start_row_binary = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      elif fid == 6:
+        if ftype == TType.STRING:
+          self.end_row_binary = iprot.readString();
+        else:
+          iprot.skip(ftype)
       else:
         iprot.skip(ftype)
       iprot.readFieldEnd()
@@ -233,6 +253,14 @@ class RowInterval(object):
       oprot.writeFieldBegin('end_inclusive', TType.BOOL, 4)
       oprot.writeBool(self.end_inclusive)
       oprot.writeFieldEnd()
+    if self.start_row_binary is not None:
+      oprot.writeFieldBegin('start_row_binary', TType.STRING, 5)
+      oprot.writeString(self.start_row_binary)
+      oprot.writeFieldEnd()
+    if self.end_row_binary is not None:
+      oprot.writeFieldBegin('end_row_binary', TType.STRING, 6)
+      oprot.writeString(self.end_row_binary)
+      oprot.writeFieldEnd()
     oprot.writeFieldStop()
     oprot.writeStructEnd()
 
@@ -246,6 +274,8 @@ class RowInterval(object):
     value = (value * 31) ^ hash(self.start_inclusive)
     value = (value * 31) ^ hash(self.end_row)
     value = (value * 31) ^ hash(self.end_inclusive)
+    value = (value * 31) ^ hash(self.start_row_binary)
+    value = (value * 31) ^ hash(self.end_row_binary)
     return value
 
   def __repr__(self):

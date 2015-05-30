@@ -82,13 +82,16 @@ final class KeyFlag {
  * 
  * NO_LOG_SYNC: Do not sync the commit log
  * IGNORE_UNKNOWN_CFS: Don't throw exception if mutator writes to unknown column family
+ * NO_LOG: Don't write to the commit log
  */
 final class MutatorFlag {
   const NO_LOG_SYNC = 1;
   const IGNORE_UNKNOWN_CFS = 2;
+  const NO_LOG = 4;
   static public $__names = array(
     1 => 'NO_LOG_SYNC',
     2 => 'IGNORE_UNKNOWN_CFS',
+    4 => 'NO_LOG',
   );
 }
 
@@ -144,6 +147,14 @@ class RowInterval {
    * @var bool
    */
   public $end_inclusive = true;
+  /**
+   * @var string
+   */
+  public $start_row_binary = null;
+  /**
+   * @var string
+   */
+  public $end_row_binary = null;
 
   public function __construct($vals=null) {
     if (!isset(self::$_TSPEC)) {
@@ -164,6 +175,14 @@ class RowInterval {
           'var' => 'end_inclusive',
           'type' => TType::BOOL,
           ),
+        5 => array(
+          'var' => 'start_row_binary',
+          'type' => TType::STRING,
+          ),
+        6 => array(
+          'var' => 'end_row_binary',
+          'type' => TType::STRING,
+          ),
         );
     }
     if (is_array($vals)) {
@@ -178,6 +197,12 @@ class RowInterval {
       }
       if (isset($vals['end_inclusive'])) {
         $this->end_inclusive = $vals['end_inclusive'];
+      }
+      if (isset($vals['start_row_binary'])) {
+        $this->start_row_binary = $vals['start_row_binary'];
+      }
+      if (isset($vals['end_row_binary'])) {
+        $this->end_row_binary = $vals['end_row_binary'];
       }
     }
   }
@@ -229,6 +254,20 @@ class RowInterval {
             $xfer += $input->skip($ftype);
           }
           break;
+        case 5:
+          if ($ftype == TType::STRING) {
+            $xfer += $input->readString($this->start_row_binary);
+          } else {
+            $xfer += $input->skip($ftype);
+          }
+          break;
+        case 6:
+          if ($ftype == TType::STRING) {
+            $xfer += $input->readString($this->end_row_binary);
+          } else {
+            $xfer += $input->skip($ftype);
+          }
+          break;
         default:
           $xfer += $input->skip($ftype);
           break;
@@ -260,6 +299,16 @@ class RowInterval {
     if ($this->end_inclusive !== null) {
       $xfer += $output->writeFieldBegin('end_inclusive', TType::BOOL, 4);
       $xfer += $output->writeBool($this->end_inclusive);
+      $xfer += $output->writeFieldEnd();
+    }
+    if ($this->start_row_binary !== null) {
+      $xfer += $output->writeFieldBegin('start_row_binary', TType::STRING, 5);
+      $xfer += $output->writeString($this->start_row_binary);
+      $xfer += $output->writeFieldEnd();
+    }
+    if ($this->end_row_binary !== null) {
+      $xfer += $output->writeFieldBegin('end_row_binary', TType::STRING, 6);
+      $xfer += $output->writeString($this->end_row_binary);
       $xfer += $output->writeFieldEnd();
     }
     $xfer += $output->writeFieldStop();
