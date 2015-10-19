@@ -1,4 +1,4 @@
-/** -*- c++ -*-
+/*
  * Copyright (C) 2007-2015 Hypertable, Inc.
  *
  * This file is part of Hypertable.
@@ -19,19 +19,20 @@
  * 02110-1301, USA.
  */
 
-#include "Common/Compat.h"
+#include <Common/Compat.h>
+
+#include <Hypertable/Lib/Client.h>
+#include <Hypertable/Lib/Future.h>
+
+#include <Common/md5.h>
+#include <Common/Usage.h>
+
 #include <cstdlib>
 #include <iostream>
 
 extern "C" {
 #include <unistd.h>
 }
-
-#include "Common/md5.h"
-#include "Common/Usage.h"
-
-#include "Hypertable/Lib/Client.h"
-#include "Hypertable/Lib/Future.h"
 
 using namespace std;
 using namespace Hypertable;
@@ -106,13 +107,12 @@ int main(int argc, char **argv) {
      */
     {
       Future ff;
-      TableMutatorAsyncPtr mutator_ptr;
       ns->drop_table("FutureTest", true);
       ns->create_table("FutureTest", schema);
 
       table_ptr = ns->open_table("FutureTest");
 
-      mutator_ptr = table_ptr->create_mutator_async(&ff, 0, Table::MUTATOR_FLAG_NO_LOG_SYNC);
+      TableMutatorAsyncPtr mutator_ptr(table_ptr->create_mutator_async(&ff, 0, Table::MUTATOR_FLAG_NO_LOG_SYNC));
 
       key.column_family = "data";
       key.column_qualifier = 0;
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
               result->get_error(error, error_msg);
               Exception e(error, error_msg);
               HT_ERROR_OUT << "Encountered scan error " << e << HT_END;
-              _exit(1);
+              quick_exit(EXIT_FAILURE);
             }
 
             HT_ASSERT(result->is_update());
@@ -159,7 +159,6 @@ int main(int argc, char **argv) {
     {
       // Do asynchronous scan and cancel after some time
       Future ff(500);
-      TableScannerAsyncPtr scanner_ptr;
 
       ssbuilder.set_row_limit(60);
       ssbuilder.add_row_interval("00000",true, "00048", false);
@@ -168,7 +167,7 @@ int main(int argc, char **argv) {
       ssbuilder.add_row_interval("00050",true, "01000", false);
       scan_spec = ssbuilder.get();
 
-      scanner_ptr = table_ptr->create_scanner_async(&ff, scan_spec);
+      TableScannerAsyncPtr scanner_ptr(table_ptr->create_scanner_async(&ff, scan_spec));
 
       memset(&md5_ctx, 0, sizeof(md5_ctx));
       md5_starts(&md5_ctx);
@@ -184,7 +183,7 @@ int main(int argc, char **argv) {
           result->get_error(error, error_msg);
           Exception e(error, error_msg);
           HT_ERROR_OUT << "Encountered scan error " << e << HT_END;
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
 
         result->get_cells(cells);
@@ -203,7 +202,7 @@ int main(int argc, char **argv) {
 
       if (memcmp(sent_digest, received_digest, 16)) {
         HT_ERROR("MD5 digest mismatch between sent and received");
-        _exit(1);
+        quick_exit(EXIT_FAILURE);
       }
       HT_INFO("cancel test finished");
 
@@ -216,7 +215,7 @@ int main(int argc, char **argv) {
       ssbuilder.add_row_interval("00010",true, "00027", false);
       ssbuilder.add_row_interval("00027",true, "00050", false);
       scan_spec = ssbuilder.get();
-      scanner_ptr = table_ptr->create_scanner_async(&ff2, scan_spec);
+      scanner_ptr.reset(table_ptr->create_scanner_async(&ff2, scan_spec));
 
       while (ff2.get(result)) {
         if (result->is_error()) {
@@ -225,7 +224,7 @@ int main(int argc, char **argv) {
           result->get_error(error, error_msg);
           Exception e(error, error_msg);
           HT_ERROR_OUT << "Encountered scan error " << e << HT_END;
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
 
         result->get_cells(cells);
@@ -239,7 +238,7 @@ int main(int argc, char **argv) {
 
       if (memcmp(sent_digest, received_digest, 16)) {
         HT_ERROR("MD5 digest mismatch between sent and received");
-        _exit(1);
+        quick_exit(EXIT_FAILURE);
       }
       HT_INFO("full scan test finished");
 
@@ -263,9 +262,9 @@ int main(int argc, char **argv) {
       ssbuilder.add_row_interval("00009",true, "00099", false);
       ScanSpec scan_spec_c = ssbuilder.get();
 
-      TableScannerAsyncPtr scanner_a_ptr = table_ptr->create_scanner_async(&ff3, scan_spec_a);
-      TableScannerAsyncPtr scanner_b_ptr = table_ptr->create_scanner_async(&ff3, scan_spec);
-      TableScannerAsyncPtr scanner_c_ptr = table_ptr->create_scanner_async(&ff3, scan_spec_c);
+      TableScannerAsyncPtr scanner_a_ptr(table_ptr->create_scanner_async(&ff3, scan_spec_a));
+      TableScannerAsyncPtr scanner_b_ptr(table_ptr->create_scanner_async(&ff3, scan_spec));
+      TableScannerAsyncPtr scanner_c_ptr(table_ptr->create_scanner_async(&ff3, scan_spec_c));
 
       // wait until the queue is full
       while (!ff3.is_full())
@@ -283,10 +282,10 @@ int main(int argc, char **argv) {
           result->get_error(error, error_msg);
           Exception e(error, error_msg);
           HT_ERROR_OUT << "Encountered scan error " << e << HT_END;
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
 
-        if (scanner_b_ptr == result->get_scanner()) {
+        if (scanner_b_ptr.get() == result->get_scanner()) {
           result->get_cells(cells);
           for (size_t ii=0; ii< cells.size(); ++ii) {
             md5_update(&md5_ctx, (unsigned char *)cells[ii].value, cells[ii].value_len);
@@ -295,7 +294,7 @@ int main(int argc, char **argv) {
         }
         else {
           HT_ERROR("Result from a cancelled scanner received");
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
       }
 
@@ -303,7 +302,7 @@ int main(int argc, char **argv) {
 
       if (memcmp(sent_digest, received_digest, 16)) {
         HT_ERROR("MD5 digest mismatch between sent and received");
-        _exit(1);
+        quick_exit(EXIT_FAILURE);
       }
       HT_INFO("cancel scanner test finished");
 
@@ -312,8 +311,8 @@ int main(int argc, char **argv) {
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
   }
 
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }

@@ -18,48 +18,40 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301, USA.
  */
-#include "Common/Compat.h"
 
-#include <iostream>
-#include <fstream>
-#include <cstdio>
-#include <cstdlib>
-#include <cmath>
-
-extern "C" {
-#include <poll.h>
-#include <stdio.h>
-#include <time.h>
-}
-
-#include <boost/algorithm/string.hpp>
-#include <boost/progress.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/thread/thread.hpp>
-#include <boost/thread/xtime.hpp>
-#include <boost/timer.hpp>
-
-#include "Common/Mutex.h"
-#include "Common/Stopwatch.h"
-#include "Common/String.h"
-#include "Common/Sweetener.h"
-#include "Common/Init.h"
-#include "Common/Usage.h"
-
-#include "Hypertable/Lib/Client.h"
-#include "Hypertable/Lib/DataGenerator.h"
-#include "Hypertable/Lib/Config.h"
-#include "Hypertable/Lib/Cells.h"
+#include <Common/Compat.h>
 
 #include "LoadClient.h"
 #include "LoadThread.h"
 #include "QueryThread.h"
 #include "ParallelLoad.h"
 
+#include <Hypertable/Lib/Client.h>
+#include <Hypertable/Lib/DataGenerator.h>
+#include <Hypertable/Lib/Config.h>
+#include <Hypertable/Lib/Cells.h>
+
+#include <Common/Stopwatch.h>
+#include <Common/String.h>
+#include <Common/Init.h>
+#include <Common/Usage.h>
+
+#include <boost/algorithm/string.hpp>
+#include <boost/progress.hpp>
+#include <boost/shared_array.hpp>
+#include <boost/thread/thread.hpp>
+
+#include <chrono>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <iostream>
+#include <thread>
+
 using namespace Hypertable;
 using namespace Hypertable::Config;
 using namespace std;
-using namespace boost;
 
 namespace {
 
@@ -152,7 +144,7 @@ void parse_command_line(int argc, char **argv, PropertiesPtr &props);
 
 int main(int argc, char **argv) {
   String table, load_type, spec_file, sample_fname;
-  PropertiesPtr generator_props = new Properties();
+  PropertiesPtr generator_props = make_shared<Properties>();
   bool flush, to_stdout, thrift;
   ::uint64_t flush_interval=0;
   ::uint64_t shared_mutator_flush_interval=0;
@@ -166,7 +158,7 @@ int main(int argc, char **argv) {
 
     if (!has("type")) {
       std::cout << cmdline_desc() << std::flush;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
     load_type = get_str("type");
@@ -182,11 +174,11 @@ int main(int argc, char **argv) {
 
     flush = get_bool("flush");
     if (has("no-log"))
-      mutator_flags |= Table::MUTATOR_FLAG_NO_LOG;
+      mutator_flags |= TableMutator::FLAG_NO_LOG;
     else if (get_bool("no-log-sync"))
-      mutator_flags |= Table::MUTATOR_FLAG_NO_LOG_SYNC;
+      mutator_flags |= TableMutator::FLAG_NO_LOG_SYNC;
     to_stdout = get_bool("stdout");
-    if (mutator_flags & Table::MUTATOR_FLAG_NO_LOG_SYNC)
+    if (mutator_flags & TableMutator::FLAG_NO_LOG_SYNC)
       flush_interval = get_i64("flush-interval");
     shared_mutator_flush_interval = get_i64("shared-mutator-flush-interval");
     thrift = get_bool("thrift");
@@ -204,7 +196,7 @@ int main(int argc, char **argv) {
     if (generator_props->has("DataGenerator.MaxBytes") &&
         generator_props->has("DataGenerator.MaxKeys")) {
       HT_ERROR("Only one of 'DataGenerator.MaxBytes' or 'DataGenerator.MaxKeys' may be specified");
-      _exit(1);
+      quick_exit(EXIT_FAILURE);
     }
 
     if (generator_props->has("DataGenerator.DeletePercentage"))
@@ -224,24 +216,24 @@ int main(int argc, char **argv) {
               && !generator_props->has("max-keys")) {
         HT_ERROR("'DataGenerator.MaxKeys' or --max-keys must be specified for "
                 "load type 'query'");
-        _exit(1);
+        quick_exit(EXIT_FAILURE);
       }
       if (parallel > 0) {
         if (to_stdout) {
           HT_FATAL("--stdout switch not supported for parallel queries");
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
         if (sample_fname != "") {
           HT_FATAL("--sample-file not supported for parallel queries");
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
         if (has("query-mode")) {
           HT_FATAL("--query-mode not supported for parallel queries");
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
         if (thrift) {
           HT_FATAL("thrift mode not supported for parallel queries");
-          _exit(1);
+          quick_exit(EXIT_FAILURE);
         }
 
         generate_query_load_parallel(generator_props, table, parallel);
@@ -252,16 +244,16 @@ int main(int argc, char **argv) {
     }
     else {
       std::cout << cmdline_desc() << std::flush;
-      _exit(1);
+      quick_exit(EXIT_FAILURE);
     }
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   fflush(stdout);
-  _exit(0); // don't bother with static objects
+  quick_exit(EXIT_SUCCESS); // don't bother with static objects
 }
 
 
@@ -378,9 +370,9 @@ generate_update_load(PropertiesPtr &props, String &tablename, bool flush,
     boost::progress_display progress_meter(key_limit ? dg.get_max_keys() : adjusted_bytes);
 
     if (config_file != "")
-      load_client_ptr = new LoadClient(config_file, thrift);
+      load_client_ptr = make_shared<LoadClient>(config_file, thrift);
     else
-      load_client_ptr = new LoadClient(thrift);
+      load_client_ptr = make_shared<LoadClient>(thrift);
 
     load_client_ptr->create_mutator(tablename, mutator_flags,
                                     shared_mutator_flush_interval);
@@ -493,7 +485,7 @@ generate_update_load(PropertiesPtr &props, String &tablename, bool flush,
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
 
@@ -553,7 +545,7 @@ generate_update_load_parallel(PropertiesPtr &props, String &tablename,
     uint32_t adjusted_bytes = 0;
     LoadRec *lrec;
 
-    client = new Hypertable::Client(config_file);
+    client = make_shared<Hypertable::Client>(config_file);
     ht_namespace = client->open_namespace("/");
     table = ht_namespace->open_table(tablename);
 
@@ -582,7 +574,7 @@ generate_update_load_parallel(PropertiesPtr &props, String &tablename,
       lrec->amount = iter.last_data_size();
 
       {
-        ScopedLock lock(load_vector[next].mutex);
+        std::lock_guard<std::mutex> lock(load_vector[next].mutex);
         load_vector[next].requests.push_back(lrec);
         // Delete garbage, update progress meter
         while (!load_vector[next].garbage.empty()) {
@@ -613,7 +605,7 @@ generate_update_load_parallel(PropertiesPtr &props, String &tablename,
     }
 
     for (::int32_t i=0; i<parallel; i++) {
-      ScopedLock lock(load_vector[i].mutex);
+      std::lock_guard<std::mutex> lock(load_vector[i].mutex);
       load_vector[i].finished = true;
       load_vector[i].cond.notify_all();
     }
@@ -632,7 +624,7 @@ generate_update_load_parallel(PropertiesPtr &props, String &tablename,
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   stopwatch.stop();
@@ -727,14 +719,14 @@ void generate_query_load(PropertiesPtr &props, String &tablename,
     uint64_t last_bytes = 0;
 
     if (config_file != "")
-      load_client_ptr = new LoadClient(config_file, thrift);
+      load_client_ptr = make_shared<LoadClient>(config_file, thrift);
     else
-      load_client_ptr = new LoadClient(thrift);
+      load_client_ptr = make_shared<LoadClient>(thrift);
 
     for (DataGenerator::iterator iter = dg.begin(); iter != dg.end(); iter++) {
 
       if (delay)
-        poll(0, 0, delay);
+        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
       scan_spec.clear();
       if (query_mode == INDEX) {
@@ -784,7 +776,7 @@ void generate_query_load(PropertiesPtr &props, String &tablename,
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   stopwatch.stop();
@@ -824,7 +816,7 @@ void generate_query_load_parallel(PropertiesPtr &props, String &tablename,
   boost::progress_display progress(max_keys * parallel);
 
   String config_file = get_str("config");
-  ClientPtr client = new Hypertable::Client(config_file);
+  ClientPtr client = make_shared<Hypertable::Client>(config_file);
   NamespacePtr ht_namespace = client->open_namespace("/");
   TablePtr table = ht_namespace->open_table(tablename);
 

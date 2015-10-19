@@ -142,7 +142,7 @@ namespace {
     if (get_bool("display-address")) {
       std::cout << get_str("fs-host") << ":" << get_i16("fs-port")
           << std::endl;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
     FsBroker::Lib::ClientPtr fs = std::make_shared<FsBroker::Lib::Client>(conn_mgr, properties);
@@ -161,11 +161,11 @@ namespace {
     }
     catch (Exception &e) {
       HT_ERRORF("Status check: %s - %s", Error::get_text(e.code()), e.what());
-      _exit(1);
+      quick_exit(EXIT_FAILURE);
     }
   }
 
-  Hyperspace::Session *hyperspace;
+  Hyperspace::SessionPtr hyperspace;
 
   void check_hyperspace(ConnectionManagerPtr &conn_mgr, uint32_t max_wait_ms) {
     HT_DEBUG_OUT << "Checking hyperspace"<< HT_END;
@@ -183,10 +183,10 @@ namespace {
     if (get_bool("display-address")) {
       std::cout << host << ":" <<
           properties->get_i16("Hyperspace.Replica.Port") << std::endl;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
-    hyperspace = new Hyperspace::Session(conn_mgr->get_comm(), properties);
+    hyperspace = make_shared<Hyperspace::Session>(conn_mgr->get_comm(), properties);
 
     if (!hyperspace->wait_for_connection(max_wait_ms))
       HT_THROW(Error::REQUEST_TIMEOUT, "connecting to hyperspace");
@@ -209,24 +209,23 @@ namespace {
     if (get_bool("display-address")) {
       std::cout << get_str("Hypertable.Master.Host") << ":" <<
           get_i16("Hypertable.Master.Port") << std::endl;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
     if (!hyperspace) {
-      hyperspace = new Hyperspace::Session(conn_mgr->get_comm(), properties);
+      hyperspace = make_shared<Hyperspace::Session>(conn_mgr->get_comm(), properties);
       if (!hyperspace->wait_for_connection(wait_ms))
         HT_THROW(Error::REQUEST_TIMEOUT, "connecting to hyperspace");
     }
 
     ApplicationQueueInterfacePtr app_queue = make_shared<ApplicationQueue>(1);
-    Hyperspace::SessionPtr hyperspace_ptr = hyperspace;
 
     String toplevel_dir = properties->get_str("Hypertable.Directory");
     boost::trim_if(toplevel_dir, boost::is_any_of("/"));
     toplevel_dir = String("/") + toplevel_dir;
 
     Lib::Master::Client *master =
-      new Lib::Master::Client(conn_mgr, hyperspace_ptr,
+      new Lib::Master::Client(conn_mgr, hyperspace,
                               toplevel_dir, wait_ms, app_queue,
                               DispatchHandlerPtr(), ConnectionInitializerPtr());
 
@@ -254,7 +253,7 @@ namespace {
 
     if (get_bool("display-address")) {
       std::cout << host << ":" << port << std::endl;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
     HT_DEBUG_OUT << "Checking master on " << host << ":" << port << HT_END;
@@ -300,7 +299,7 @@ namespace {
 
     if (get_bool("display-address")) {
       std::cout << get_str("rs-host") << ":" << get_i16("rs-port") << std::endl;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
     InetAddr addr(get_str("rs-host"), get_i16("rs-port"));
@@ -327,7 +326,7 @@ namespace {
     if (get_bool("display-address")) {
       std::cout << get_str("thrift-host") << ":" << get_i16("thrift-port")
           << std::endl;
-      _exit(0);
+      quick_exit(EXIT_SUCCESS);
     }
 
     String table_id;
@@ -416,7 +415,7 @@ int main(int argc, char **argv) {
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    _exit(1);    // don't bother with global/static objects
+    quick_exit(EXIT_FAILURE);
   }
-  _exit(down);   // ditto
+  quick_exit(down);   // ditto
 }

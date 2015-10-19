@@ -44,6 +44,7 @@
 #include <Common/md5.h>
 
 #include <algorithm>
+#include <chrono>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -73,8 +74,9 @@ MaintenanceScheduler::MaintenanceScheduler(MaintenanceQueuePtr &queue,
   m_low_memory_prioritization = get_bool("Hypertable.RangeServer.Maintenance.LowMemoryPrioritization");
 
   // Setup to immediately schedule maintenance
-  boost::xtime_get(&m_last_low_memory, TIME_UTC_);
-  memcpy(&m_last_check, &m_last_low_memory, sizeof(boost::xtime));
+  m_last_low_memory = chrono::steady_clock::now();
+  m_last_check = m_last_low_memory;
+
   m_low_memory_limit_percentage = get_i32("Hypertable.RangeServer.LowMemoryLimit.Percentage");
   m_merging_delay = get_i32("Hypertable.RangeServer.Maintenance.MergingCompaction.Delay");
   m_merges_per_interval = get_i32("Hypertable.RangeServer.Maintenance.MergesPerInterval",
@@ -119,11 +121,10 @@ void MaintenanceScheduler::schedule() {
   bool low_memory = low_memory_mode();
   bool do_scheduling = true;
   bool debug = false;
-  boost::xtime now;
   function<bool(RangeData &)> in_blacklist =
     [this](RangeData &rd) -> bool {return this->m_table_blacklist.count(rd.data->table_id);};
 
-  boost::xtime_get(&now, TIME_UTC_);
+  auto now = chrono::steady_clock::now();
 
   Global::load_statistics->recompute();
 
@@ -200,15 +201,18 @@ void MaintenanceScheduler::schedule() {
              Global::low_activity_time.within_window() ? "true" : "false");
 
   // Fetch maintenance data for ranges and thier access groups
-  foreach_ht (RangeData &rd, ranges.array)
+  for (auto &rd : ranges.array)
     rd.data = rd.range->get_maintenance_data(ranges.arena, current_time, flags);
 
-  if (ranges.array.empty())
+  if (ranges.array.empty()) {
+    if (!Global::range_initialization_complete)
+      Global::range_initialization_complete = true;
     return;
+  }
 
   // Make a copy of the range statistics array for get_statistics()
   {
-    RangesPtr ranges_copy = new Ranges();
+    RangesPtr ranges_copy = make_shared<Ranges>();
     ranges_copy->array = ranges.array;
     for (size_t i=0; i<ranges.array.size(); i++) {
       ranges_copy->array[i].data =
@@ -266,7 +270,7 @@ void MaintenanceScheduler::schedule() {
       trace_str += format("before revision_user\t%llu\n", (Llu)revision_user);
     }
 
-    foreach_ht (RangeData &rd, ranges.array) {
+    for (auto &rd : ranges.array) {
 
       if (rd.data->needs_major_compaction && priority <= m_move_compactions_per_interval) {
         rd.data->priority = priority++;
@@ -363,8 +367,7 @@ void MaintenanceScheduler::schedule() {
   if (debug)
     write_debug_output(now, ranges, trace_str);
 
-  boost::xtime schedule_time;
-  boost::xtime_get(&schedule_time, boost::TIME_UTC_);
+  auto schedule_time = chrono::steady_clock::now();
 
   if (not_acknowledged) {
     HT_INFOF("Found load_acknowledged=false in %d ranges", (int)not_acknowledged);
@@ -376,7 +379,7 @@ void MaintenanceScheduler::schedule() {
   // was in progress
   if (!m_initialized) {
     uint32_t level = 0, priority = 0;
-    foreach_ht (RangeData &rd, ranges.array) {
+    for (auto &rd : ranges.array) {
       if (!rd.data->initialized)
         uninitialized_range_seen = true;
       if (rd.data->state == RangeState::SPLIT_LOG_INSTALLED ||
@@ -401,7 +404,7 @@ void MaintenanceScheduler::schedule() {
 
     // Sort the ranges based on priority
     ranges_prioritized.array.reserve( ranges.array.size() );
-    foreach_ht (RangeData &rd, ranges.array) {
+    for (auto &rd : ranges.array) {
       if (rd.data->priority > 0)
         ranges_prioritized.array.push_back(rd);
     }
@@ -412,7 +415,7 @@ void MaintenanceScheduler::schedule() {
     int32_t initialization_created = 0;
     uint32_t level = 0;
 
-    foreach_ht (RangeData &rd, ranges_prioritized.array) {
+    for (auto &rd : ranges_prioritized.array) {
       if (!rd.data->initialized) {
         uninitialized_range_seen = true;
         if (!low_memory && initialization_created < m_initialization_per_interval) {
@@ -478,7 +481,7 @@ void MaintenanceScheduler::schedule() {
 
   MaintenanceTaskWorkQueue *task = 0;
   {
-    ScopedLock lock(Global::mutex);
+    lock_guard<mutex>  lock(Global::mutex);
     if (!Global::work_queue.empty())
       task = new MaintenanceTaskWorkQueue(3, 0, Global::work_queue);
   }
@@ -499,8 +502,8 @@ int MaintenanceScheduler::get_level(RangeData &rd) {
 }
 
 
-bool MaintenanceScheduler::debug_signal_file_exists(boost::xtime now) {
-  if (xtime_diff_millis(m_last_check, now) >= (int64_t)60000) {
+bool MaintenanceScheduler::debug_signal_file_exists(chrono::steady_clock::time_point now) {
+  if (now - m_last_check >= chrono::milliseconds(60000)) {
     m_last_check = now;
     return FileUtils::exists(System::install_dir + "/run/debug-scheduler");
   }
@@ -508,14 +511,15 @@ bool MaintenanceScheduler::debug_signal_file_exists(boost::xtime now) {
 }
 
 
-void MaintenanceScheduler::write_debug_output(boost::xtime now, Ranges &ranges,
+void MaintenanceScheduler::write_debug_output(chrono::steady_clock::time_point now,
+                                              Ranges &ranges,
                                               const String &header_str) {
   AccessGroup::MaintenanceData *ag_data;
   String output_fname = System::install_dir + "/run/scheduler.output";
   ofstream out;
   out.open(output_fname.c_str());
   out << header_str << "\n";
-  foreach_ht (RangeData &rd, ranges.array) {
+  for (auto &rd : ranges.array) {
     out << *rd.data << "\n";
     for (ag_data = rd.data->agdata; ag_data; ag_data = ag_data->next)
       out << *ag_data << "\n";
@@ -523,7 +527,7 @@ void MaintenanceScheduler::write_debug_output(boost::xtime now, Ranges &ranges,
   StringSet logs;
   Global::remove_ok_logs->get(logs);
   out << "RemoveOkLogs:\n";
-  foreach_ht (const String &log, logs)
+  for (const auto &log : logs)
     cout << log << "\n";
   out.close();
   FileUtils::unlink(System::install_dir + "/run/debug-scheduler");

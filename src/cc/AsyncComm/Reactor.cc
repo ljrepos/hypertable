@@ -60,22 +60,19 @@ extern "C" {
 using namespace Hypertable;
 using namespace std;
 
-/**
- *
- */
-Reactor::Reactor() : m_interrupt_in_progress(false) {
+Reactor::Reactor() {
   struct sockaddr_in addr;
 
   if (!ReactorFactory::use_poll) {
 #if defined(__linux__)
     if ((poll_fd = epoll_create(256)) < 0) {
       perror("epoll_create");
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 #elif defined(__sun__)
     if ((poll_fd = port_create()) < 0) {
       perror("creation of event port failed");
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 #elif defined(__APPLE__) || defined(__FreeBSD__)
     kqd = kqueue();
@@ -91,7 +88,7 @@ Reactor::Reactor() : m_interrupt_in_progress(false) {
      */
     if ((m_interrupt_sd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
       HT_ERRORF("socket() failure: %s", strerror(errno));
-      exit(1);
+      exit(EXIT_FAILURE);
     }
 
     // Set to non-blocking (are we sure we should do this?)
@@ -102,7 +99,7 @@ Reactor::Reactor() : m_interrupt_in_progress(false) {
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = inet_addr("127.0.0.1");
     // Arbitray ephemeral port that won't conflict with our reserved ports    
-    uint16_t port = (uint16_t)(49152 + (ReactorFactory::rng() % 16383));
+    uint16_t port = (uint16_t)(49152 + std::uniform_int_distribution<>(0, 16382)(ReactorFactory::rng));
     addr.sin_port = htons(port);
 
     // bind socket
@@ -125,7 +122,7 @@ Reactor::Reactor() : m_interrupt_in_progress(false) {
              (int)ntohs(addr.sin_port), strerror(errno));
 
   if (ReactorFactory::use_poll) {
-    ScopedLock lock(m_polldata_mutex);
+    lock_guard<mutex> lock(m_polldata_mutex);
     if ((size_t)m_interrupt_sd >= m_polldata.size()) {
       size_t i = m_polldata.size();
       m_polldata.resize(m_interrupt_sd+1);
@@ -151,7 +148,7 @@ Reactor::Reactor() : m_interrupt_in_progress(false) {
 	HT_ERRORF("epoll_ctl(%d, EPOLL_CTL_ADD, %d, EPOLLIN|EPOLLOUT|POLLRDHUP|"
 		  "EPOLLET) failed : %s", poll_fd, m_interrupt_sd,
 		  strerror(errno));
-	exit(1);
+	exit(EXIT_FAILURE);
       }
     }
     else {
@@ -160,29 +157,29 @@ Reactor::Reactor() : m_interrupt_in_progress(false) {
       if (epoll_ctl(poll_fd, EPOLL_CTL_ADD, m_interrupt_sd, &event) < 0) {
 	HT_ERRORF("epoll_ctl(%d, EPOLL_CTL_ADD, %d, 0) failed : %s",
 		  poll_fd, m_interrupt_sd, strerror(errno));
-	exit(1);
+	exit(EXIT_FAILURE);
       }
     }
 #endif
   }
 
-  memset(&m_next_wakeup, 0, sizeof(m_next_wakeup));
+  m_next_wakeup = ClockT::time_point();
 }
 
 
 void Reactor::handle_timeouts(PollTimeout &next_timeout) {
   vector<ExpireTimer> expired_timers;
   EventPtr event;
-  boost::xtime now, next_req_timeout;
+  ClockT::time_point now, next_req_timeout;
   ExpireTimer timer;
 
   while(true) {
     {
-      ScopedLock lock(m_mutex);
+      lock_guard<mutex> lock(m_mutex);
       IOHandler *handler;
       DispatchHandler *dh;
 
-      boost::xtime_get(&now, boost::TIME_UTC_);
+      now = ClockT::now();
 
       while (m_request_cache.get_next_timeout(now, handler, dh,
                                               &next_req_timeout)) {
@@ -191,13 +188,13 @@ void Reactor::handle_timeouts(PollTimeout &next_timeout) {
         handler->deliver_event(event, dh);
       }
 
-      if (next_req_timeout.sec != 0) {
+      if (next_req_timeout != ClockT::time_point()) {
         next_timeout.set(now, next_req_timeout);
-        memcpy(&m_next_wakeup, &next_req_timeout, sizeof(m_next_wakeup));
+        m_next_wakeup = next_req_timeout;
       }
       else {
         next_timeout.set_indefinite();
-        memset(&m_next_wakeup, 0, sizeof(m_next_wakeup));
+        m_next_wakeup = ClockT::time_point();
       }
 
       if (!m_timer_heap.empty()) {
@@ -205,11 +202,11 @@ void Reactor::handle_timeouts(PollTimeout &next_timeout) {
 
         while (!m_timer_heap.empty()) {
           timer = m_timer_heap.top();
-          if (xtime_cmp(timer.expire_time, now) > 0) {
-            if (next_req_timeout.sec == 0
-                || xtime_cmp(timer.expire_time, next_req_timeout) < 0) {
+          if (timer.expire_time > now) {
+            if (next_req_timeout == ClockT::time_point() ||
+                timer.expire_time < next_req_timeout) {
               next_timeout.set(now, timer.expire_time);
-              memcpy(&m_next_wakeup, &timer.expire_time, sizeof(m_next_wakeup));
+              m_next_wakeup = timer.expire_time;
             }
             break;
           }
@@ -230,18 +227,18 @@ void Reactor::handle_timeouts(PollTimeout &next_timeout) {
     }
 
     {
-      ScopedLock lock(m_mutex);
+      lock_guard<mutex> lock(m_mutex);
 
       if (!m_timer_heap.empty()) {
         timer = m_timer_heap.top();
 
-        if (xtime_cmp(now, timer.expire_time) > 0)
+        if (now > timer.expire_time)
           continue;
 
-        if (next_req_timeout.sec == 0
-            || xtime_cmp(timer.expire_time, next_req_timeout) < 0) {
+        if (next_req_timeout == ClockT::time_point()
+            || timer.expire_time < next_req_timeout) {
           next_timeout.set(now, timer.expire_time);
-          memcpy(&m_next_wakeup, &timer.expire_time, sizeof(m_next_wakeup));
+          m_next_wakeup = timer.expire_time;
         }
       }
 
@@ -255,9 +252,6 @@ void Reactor::handle_timeouts(PollTimeout &next_timeout) {
 
 
 
-/**
- *
- */
 int Reactor::poll_loop_interrupt() {
 
   m_interrupt_in_progress = true;
@@ -387,7 +381,7 @@ int Reactor::poll_loop_continue() {
 
 
 int Reactor::add_poll_interest(int sd, short events, IOHandler *handler) {
-  ScopedLock lock(m_polldata_mutex);
+  lock_guard<mutex> lock(m_polldata_mutex);
   int error;
 
   if (m_polldata.size() <= (size_t)sd) {
@@ -404,7 +398,7 @@ int Reactor::add_poll_interest(int sd, short events, IOHandler *handler) {
   m_polldata[sd].handler = handler;
 
   {
-    ScopedLock lock(m_mutex);
+    lock_guard<mutex> lock(m_mutex);
     error = poll_loop_interrupt();
   }
   if (error != Error::OK) {
@@ -417,7 +411,7 @@ int Reactor::add_poll_interest(int sd, short events, IOHandler *handler) {
 
 int Reactor::remove_poll_interest(int sd) {
   {
-    ScopedLock lock(m_polldata_mutex);
+    lock_guard<mutex> lock(m_polldata_mutex);
 
     HT_ASSERT(m_polldata.size() > (size_t)sd);
     if ((size_t)sd == m_polldata.size()-1) {
@@ -432,24 +426,24 @@ int Reactor::remove_poll_interest(int sd) {
       m_polldata[sd].handler = 0;
     }
   }
-  ScopedLock lock(m_mutex);
+  lock_guard<mutex> lock(m_mutex);
   return poll_loop_interrupt();
 }
 
 int Reactor::modify_poll_interest(int sd, short events) {
   {
-    ScopedLock lock(m_polldata_mutex);
+    lock_guard<mutex> lock(m_polldata_mutex);
     HT_ASSERT(m_polldata.size() > (size_t)sd);
     m_polldata[sd].pollfd.events = events;
   }
-  ScopedLock lock(m_mutex);
+  lock_guard<mutex> lock(m_mutex);
   return poll_loop_interrupt();
 }
 
 
 void Reactor::fetch_poll_array(std::vector<struct pollfd> &fdarray,
 			       std::vector<IOHandler *> &handlers) {
-  ScopedLock lock(m_polldata_mutex);
+  lock_guard<mutex> lock(m_polldata_mutex);
 
   fdarray.clear();
   handlers.clear();

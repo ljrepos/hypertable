@@ -28,6 +28,7 @@
 #ifndef AsyncComm_Comm_h
 #define AsyncComm_Comm_h
 
+#include "Clock.h"
 #include "CommAddress.h"
 #include "CommBuf.h"
 #include "ConnectionHandlerFactory.h"
@@ -35,8 +36,8 @@
 #include "HandlerMap.h"
 #include "RawSocketHandler.h"
 
-#include <Common/Mutex.h>
-#include <Common/ReferenceCount.h>
+#include <atomic>
+#include <mutex>
 
 /** %Hypertable definitions
  */
@@ -57,7 +58,7 @@ namespace Hypertable {
    * method ReactorFactory#initialize must be called prior to constructing this
    * class in order to create the system-wide I/O reactor threads.
    */
-  class Comm : public ReferenceCount {
+  class Comm {
   public:
 
     /** Creates/returns singleton instance of the Comm class.
@@ -69,7 +70,7 @@ namespace Hypertable {
      * system-wide I/O reactor threads.
      */
     static Comm *instance() {
-      ScopedLock lock(ms_mutex);
+      std::lock_guard<std::mutex> lock(ms_mutex);
 
       if (!ms_instance)
         ms_instance = new Comm();
@@ -406,7 +407,7 @@ namespace Hypertable {
      *        expiration
      * @return Error::OK
      */
-    int set_timer_absolute(boost::xtime expire_time, const DispatchHandlerPtr &handler);
+    int set_timer_absolute(ClockT::time_point expire_time, const DispatchHandlerPtr &handler);
 
     /** Cancels all scheduled timers registered with the dispatch handler
      * <code>handler</code>.
@@ -500,10 +501,10 @@ namespace Hypertable {
     static Comm *ms_instance;
 
     /// Atomic integer used for assinging request IDs
-    static atomic_t ms_next_request_id;
+    static std::atomic<uint32_t> ms_next_request_id;
 
     /// %Mutex for serializing access to #ms_instance
-    static Mutex ms_mutex;
+    static std::mutex ms_mutex;
     
     /// Pointer to IOHandler map    
     HandlerMapPtr m_handler_map;
@@ -520,6 +521,6 @@ namespace Hypertable {
 
   /** @}*/
 
-} // namespace Hypertable
+}
 
 #endif // AsyncComm_Comm_h

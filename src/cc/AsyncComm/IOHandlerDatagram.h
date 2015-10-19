@@ -28,18 +28,16 @@
 #ifndef AsyncComm_IOHandlerDatagram_h
 #define AsyncComm_IOHandlerDatagram_h
 
+#include "CommBuf.h"
+#include "IOHandler.h"
+
 #include <list>
 #include <utility>
 
 extern "C" {
 #include <netdb.h>
 #include <string.h>
-#include <time.h>
 }
-
-#include "CommBuf.h"
-#include "IOHandler.h"
-
 
 namespace Hypertable {
 
@@ -106,7 +104,8 @@ namespace Hypertable {
      * @return <i>false</i> on success, <i>true</i> if error encountered and
      * handler was decomissioned
      */
-    virtual bool handle_event(struct pollfd *event, time_t arrival_time=0);
+    bool handle_event(struct pollfd *event,
+                      ClockT::time_point arrival_time) override;
 
 #if defined(__APPLE__) || defined(__FreeBSD__)
     /** Handle <code>kqueue()</code> interface events.
@@ -129,7 +128,8 @@ namespace Hypertable {
      * @return <i>false</i> on success, <i>true</i> if error encountered and
      * handler was decomissioned
      */
-    virtual bool handle_event(struct kevent *event, time_t arrival_time=0);
+    bool handle_event(struct kevent *event,
+                      ClockT::time_point arrival_time) override;
 #elif defined(__linux__)
     /** Handle <code>epoll()</code> interface events.
      * This method is called by its reactor thread to handle I/O events.
@@ -151,7 +151,8 @@ namespace Hypertable {
      * @return <i>false</i> on success, <i>true</i> if error encountered and
      * handler was decomissioned
      */
-    virtual bool handle_event(struct epoll_event *event, time_t arrival_time=0);
+    bool handle_event(struct epoll_event *event,
+                      ClockT::time_point arrival_time) override;
 #elif defined(__sun__)
     /** Handle <code>port_associate()</code> interface events.
      * This method is called by its reactor thread to handle I/O events.
@@ -175,7 +176,8 @@ namespace Hypertable {
      * @return <i>false</i> on success, <i>true</i> if error encountered and
      * handler was decomissioned
      */
-    virtual bool handle_event(port_event_t *event, time_t arrival_time=0);
+    bool handle_event(port_event_t *event,
+                      ClockT::time_point arrival_time) override;
 #else
     ImplementMe;
 #endif

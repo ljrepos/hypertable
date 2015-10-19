@@ -19,7 +19,7 @@
  * 02110-1301, USA.
  */
 
-#include "Common/Compat.h"
+#include <Common/Compat.h>
 
 #include <Hypertable/Master/BalancePlanAuthority.h>
 #include <Hypertable/Master/Context.h>
@@ -62,16 +62,14 @@
 #include <boost/algorithm/string.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <iterator>
 #include <list>
 #include <map>
+#include <thread>
 #include <vector>
-
-extern "C" {
-#include <poll.h>
-}
 
 using namespace Hypertable;
 using namespace Config;
@@ -108,7 +106,7 @@ namespace {
     static void init() {
       if (!has("test")) {
         HT_ERROR_OUT <<"test name required\n"<< cmdline_desc() << HT_END;
-        exit(1);
+        exit(EXIT_FAILURE);
       }
     }
   };
@@ -173,8 +171,9 @@ namespace {
       break;
     }
 
-    context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                              g_mml_dir, entities);
+    context->mml_writer =
+      make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                   g_mml_dir, entities);
     
   }
 
@@ -183,8 +182,9 @@ namespace {
     OperationPtr operation;
 
     context->op = make_unique<OperationProcessor>(context, 4);
-    context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                              g_mml_dir, entities);
+    context->mml_writer =
+      make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                   g_mml_dir, entities);
     for (auto &entity : entities) {
       operation = dynamic_pointer_cast<Operation>(entity);
       if (operation) {
@@ -233,12 +233,13 @@ namespace {
       context->op->join();
 
     context->mml_writer = 0;
-    MetaLog::ReaderPtr mml_reader = new MetaLog::Reader(context->dfs, context->mml_definition, g_mml_dir);
+    MetaLog::ReaderPtr mml_reader =
+      make_shared<MetaLog::Reader>(context->dfs, context->mml_definition, g_mml_dir);
     entities.clear();
     mml_reader->get_entities(entities);
 
     // Remove the BalancePlanAuthority object
-    foreach_ht (MetaLog::EntityPtr &entity, entities) {
+    for (auto &entity : entities) {
       if (dynamic_cast<BalancePlanAuthority *>(entity.get()) == 0)
         tmp_entities.push_back(entity);
     }
@@ -268,8 +269,9 @@ namespace {
 
     context->reference_manager->clear();
 
-    context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                              g_mml_dir, entities);
+    context->mml_writer =
+      make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                   g_mml_dir, entities);
   }
 
   void create_table(ContextPtr &context,
@@ -304,10 +306,10 @@ namespace {
       HT_FATALF("Unable to determine table ID for table \"%s\"",
                 table_name.c_str());
 
-    context->mml_writer = 0;
+    context->mml_writer.reset();
 
     initialize_test(context, entities);
-    poll(0,0,100);
+    this_thread::sleep_for(chrono::milliseconds(100));
   }
 
   bool check_for_diff(const string &basename) {
@@ -379,19 +381,20 @@ int main(int argc, char **argv) {
     replicas.push_back("localhost");
     properties->set("Hyperspace.Replica.Host", replicas);
 
-    Hyperspace::SessionPtr hyperspace = new Hyperspace::Session(Comm::instance(), properties);
+    Hyperspace::SessionPtr hyperspace = make_shared<Hyperspace::Session>(Comm::instance(), properties);
 
-    context = new Context(properties, hyperspace);
+    context = make_shared<Context>(properties, hyperspace);
     context->test_mode = true;
 
     boost::trim_if(context->toplevel_dir, boost::is_any_of("/"));
     context->toplevel_dir = String("/") + context->toplevel_dir;
-    context->monitoring = new Monitoring(context.get());
+    context->monitoring = make_shared<Monitoring>(context.get());
 
-    context->mml_definition = new MetaLog::DefinitionMaster(context, "master");
+    context->mml_definition = make_shared<MetaLog::DefinitionMaster>(context, "master");
     g_mml_dir = context->toplevel_dir + "/servers/master/log/" + context->mml_definition->name();
-    context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                              g_mml_dir, entities);
+    context->mml_writer =
+      make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                   g_mml_dir, entities);
 
     MetaLog::EntityPtr entity;
     context->get_balance_plan_authority(entity);
@@ -434,13 +437,13 @@ int main(int argc, char **argv) {
       recreate_index_tables_test(context);
     else {
       HT_ERRORF("Unrecognized test name: %s", testname.c_str());
-      _exit(1);
+      quick_exit(EXIT_FAILURE);
     }
 
   }
   catch (Exception &e) {
     HT_ERROR_OUT << e << HT_END;
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
   }
 
   return 0;
@@ -450,8 +453,9 @@ int main(int argc, char **argv) {
 void create_namespace_test(ContextPtr &context) {
   std::vector<MetaLog::EntityPtr> entities;
 
-  context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                            g_mml_dir, entities);
+  context->mml_writer =
+    make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                 g_mml_dir, entities);
 
   entities.push_back(make_shared<OperationCreateNamespace>(context, "foo", 0) );
 
@@ -468,18 +472,19 @@ void create_namespace_test(ContextPtr &context) {
   context->op->join();
 
   if (!check_for_diff("create_namespace"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
 void drop_namespace_test(ContextPtr &context) {
   std::vector<MetaLog::EntityPtr> entities;
 
-  context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                            g_mml_dir, entities);
+  context->mml_writer =
+    make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                 g_mml_dir, entities);
 
   entities.push_back(make_shared<OperationDropNamespace>(context, "foo", 0) );
 
@@ -496,10 +501,10 @@ void drop_namespace_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("drop_namespace"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 namespace {
@@ -554,7 +559,7 @@ void create_table_test(ContextPtr &context) {
 
   context->rsc_manager->disconnect_server(g_rsc[0]);
   initialize_test(context, entities);
-  poll(0,0,100);
+  this_thread::sleep_for(chrono::milliseconds(100));
   context->rsc_manager->connect_server(g_rsc[0], "rs1.hypertable.com", InetAddr("localhost", 30267),
                                        InetAddr("localhost", g_rs_port));
   context->op->wait_for_empty();
@@ -565,10 +570,10 @@ void create_table_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("create_table"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
@@ -604,10 +609,10 @@ void drop_table_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("drop_table"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
@@ -636,7 +641,7 @@ void create_table_with_index_test(ContextPtr &context) {
 
   context->rsc_manager->disconnect_server(g_rsc[0]);
   initialize_test(context, entities);
-  poll(0,0,100);
+  this_thread::sleep_for(chrono::milliseconds(100));
   context->rsc_manager->connect_server(g_rsc[0], "rs1.hypertable.com", InetAddr("localhost", 30267),
                           InetAddr("localhost", g_rs_port));
   context->op->wait_for_empty();
@@ -647,18 +652,19 @@ void create_table_with_index_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("create_table_with_index"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
 void rename_table_test(ContextPtr &context) {
   std::vector<MetaLog::EntityPtr> entities;
 
-  context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                            g_mml_dir, entities);
+  context->mml_writer =
+    make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                 g_mml_dir, entities);
 
   entities.push_back(make_shared<OperationRenameTable>(context, "tablefoo", "tablebar") );
 
@@ -673,10 +679,10 @@ void rename_table_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("rename_table"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
@@ -704,10 +710,10 @@ void master_initialize_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("master_initialize"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
@@ -736,8 +742,9 @@ void system_upgrade_test(ContextPtr &context) {
   context->hyperspace->attr_set(handle, "schema", old_schema_str, strlen(old_schema_str));
   context->hyperspace->close(handle);
 
-  context->mml_writer = new MetaLog::Writer(context->dfs, context->mml_definition,
-                                            g_mml_dir, entities);
+  context->mml_writer =
+    make_shared<MetaLog::Writer>(context->dfs, context->mml_definition,
+                                 g_mml_dir, entities);
 
   MetaLog::EntityPtr entity = make_shared<OperationSystemUpgrade>(context);
   entities.push_back(entity);
@@ -759,7 +766,7 @@ void system_upgrade_test(ContextPtr &context) {
   HT_ASSERT(dynamic_pointer_cast<Operation>(entity)->get_state() == OperationState::COMPLETE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
@@ -806,10 +813,10 @@ void move_range_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("move_range"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 void fill_ranges(vector<QualifiedRangeSpec> &root_specs,
@@ -912,11 +919,11 @@ void balance_plan_authority_test(ContextPtr &context) {
   String cmd = "cat balance_plan_authority_test.output | perl -e 'while (<>) { s/timestamp=.*?201\\d,/timestamp=0,/g; print; }' > output; diff output balance_plan_authority_test.golden";
   if (system(cmd.c_str()) != 0) {
     std::cout << "balance_plan_authority_test.output differs from golden file\n";
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
   }
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 void toggle_table_maintenance_test(ContextPtr &context) {
@@ -987,10 +994,10 @@ void toggle_table_maintenance_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("toggle_table_maintenance"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
 
 
@@ -1037,8 +1044,8 @@ void recreate_index_tables_test(ContextPtr &context) {
   out.close();
 
   if (!check_for_diff("recreate_index_tables"))
-    _exit(1);
+    quick_exit(EXIT_FAILURE);
 
   context = 0;
-  _exit(0);
+  quick_exit(EXIT_SUCCESS);
 }
