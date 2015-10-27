@@ -7,7 +7,7 @@ from hypertable.thriftclient import *
 from hyperthrift.gen.ttypes import *
 
 if (len(sys.argv) < 3):
-  print sys.argv[0], "<max-keys>", "<limit>"
+  print(sys.argv[0], "<max-keys>", "<limit>")
   sys.exit(1);
 
 max_keys=int(sys.argv[1])
@@ -29,10 +29,10 @@ try:
       cells = client.get_cells(ns, "LoadTest", ss);
 
       if len(cells) != limit:
-        print "Limit query starting at '%s' returned %d rows (expected %d)" % (start_row, len(cells), limit)
+        print("Limit query starting at '%s' returned %d rows (expected %d)" % (start_row, len(cells), limit))
         sys.exit(1);
 
   client.close_namespace(ns)
 
 except ClientException, e:
-  print '%s' % (e.message)
+  print('%s' % (e.message))
