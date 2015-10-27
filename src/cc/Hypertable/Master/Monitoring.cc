@@ -809,7 +809,6 @@ void Monitoring::run_rrdtool(std::vector<String> &command) {
 
   String cmd = "env LD_LIBRARY_PATH= DYLD_LIBRARY_PATH= rrdtool";
 
-<<<<<<< HEAD
   for (auto &s : command) {
     cmd += " ";
     cmd += s;
